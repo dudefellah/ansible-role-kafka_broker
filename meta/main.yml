@@ -1,0 +1,29 @@
+---
+galaxy_info:
+  author: dudefellah
+  role_name: kakfa
+  description: >-
+    A role useful for the creation and maintenance of a Kafka cluster.
+
+  license: GPL-2.0-or-later
+
+  min_ansible_version: 2.9
+
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+    - name: Debian
+      versions:
+        - stretch
+        - buster
+
+  galaxy_tags:
+    - cluster
+    - kakfa
+    - message
+    - queue
+    - stream
+
+dependencies: []

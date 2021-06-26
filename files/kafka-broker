@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# Helper script to make it easier for systemd to manage the Kafka Broker
+# process. There are other kafka scripts available, but it's not easy to
+# use them in a way that doesn't constantly report success no matter whether
+# or not the actual process failed. This script should help make it more
+# obvious as to whether or not the kafka broker succeeded.
+set -e
+
+KAFKA_DIR=${KAFKA_DIR-/opt/kafka}
+KAFKA_SERVER_PROPERTIES=${KAFKA_SERVER_PROPERTIES-"${KAFKA_DIR}/config/server.properties"}
+PIDFILE=${PIDFILE-/var/run/kafka-broker.pid}
+
+usage() {
+        cat >&2 <<EOOPTS
+$(basename $0) [OPTIONS]
+
+OPTIONS:
+  -h:         Print this help message
+  -x:         Enable Debugging
+
+  -p <P>:     Use <P> as the properties/config file. Default: ${KAFKA_SERVER_PROPERTIES}.
+
+  -k <K>:     Use <K> as the kafka root dir. Default: ${KAFKA_DIR}.
+EOOPTS
+}
+
+while getopts "hxp:k:" opt; do
+        case $opt in
+        h)
+                usage
+                exit 0
+                ;;
+        x)
+                set -x
+                DEBUG=1
+                ;;
+        k)
+                KAFKA_DIR=$OPTARG
+                ;;
+        p)
+                ZOOKEEPER_PROPERTIES=$OPTARG
+                ;;
+        *)
+                echo "Invalid option: -$OPTARG" >&2
+                exit 1
+                ;;
+        esac
+done
+
+shift "$((OPTIND - 1))"
+
+$KAFKA_DIR/bin/kafka-run-class.sh -name kafkaServer -loggc $KAFKA_EXTRA_ARGS kafka.Kafka $KAFKA_SERVER_PROPERTIES &
+ZOOKEEPER_SERVER=$(grep 'zookeeper.connect=' $KAFKA_SERVER_PROPERTIES | awk -F'=' '{print $2}' | sed 's/,.*//')
+
+PID=$!
+
+FOUND_BROKER=$(echo dump | socat - "TCP:${ZOOKEEPER_SERVER}" | grep brokers)
+NOW=$(date +%s)
+START=$(date +%s)
+while [ "$(expr $NOW - $START)" -lt "${KAFKA_START_WAIT}" ] && [ -z "${FOUND_BROKER}" ]; then
+    sleep 1
+    FOUND_BROKER="$(echo dump | socat - "TCP:${ZOOKEEPER_SERVER}" | grep brokers)"
+    NOW=$(date +%s)
+fi
+
+FOUND_BROKER=$(echo dump | socat - "TCP:${ZOOKEEPER_SERVER}" | grep brokers)
+
+#PID=$(ps -ef|grep java | grep kafka.Kafka | awk '{print $2}');
+if [ ! -z "${FOUND_BROKER}" ] && kill -0 $PID; then
+    echo $PID > $PIDFILE
+fi

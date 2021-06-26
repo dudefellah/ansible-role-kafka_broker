@@ -1,0 +1,12 @@
+---
+# handlers file for ansible-role-kafka
+- name: Systemctl daemon-reload
+  systemd:
+    daemon_reload: true
+  listen: systemctl daemon-reload
+
+- name: Restart kafka
+  service:
+    name: "{{ kafka_broker_service_name }}"
+    state: "{{ kafka_broker_restarted_state }}"
+  listen: restart kafka

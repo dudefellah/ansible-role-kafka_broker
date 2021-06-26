@@ -1,0 +1,146 @@
+---
+# defaults file for ansible-role-kafka_broker
+#
+# Defaults to using the packages listed for your platform in
+# vars/. If this value is set to an empty list ([]), no packages
+# will be installed by this role. If you specify a list of packages,
+# those will be installed in favour of the default lists.
+kafka_broker_packages: null
+
+# Kakfa binary download URL
+kafka_broker_release_src: https://muug.ca/mirror/apache-dist/kafka/2.7.0/kafka_2.13-2.7.0.tgz
+
+# Environment file for kafka - used on service invocation
+# The default is more Debian-y, but I figure changing this manually (like to
+# /etc/sysconfig/kafka-broker or something) on a RHEL system is probably simpler
+# than doing magic in this role in order to determine the appropriate default
+# for each distro
+kafka_broker_environment_file: /etc/default/kafka-broker
+
+# These values will be placed in the environment_file
+kafka_broker_environment:
+  KAFKA_START_WAIT: 10
+  KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:{{ kafka_broker_prefix }}/config/log4j.properties"
+  KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+
+# Kakfa broker pidfile location
+kafka_broker_pidfile: /var/run/kafka-broker.pid
+
+# Set this to false if your kafka src is located on the Ansible controller
+kafka_broker_release_remote_src: true
+
+# Optional checksum to add to verify that the checksum matches the remote archive
+kafka_broker_release_checksum: null
+
+# Destination path to hold the Kafka installation
+kafka_broker_prefix: /opt/kafka
+
+# Sets the path to the server.properties file. When null, will default to
+# {{ kafka_broker_prefix }}/config/server.properties
+kafka_broker_server_properties_file: null
+
+# Sets the path to the zookeeper.properties file. When null, will default to
+# {{ kafka_broker_prefix }}/config/zookeeper.properties
+kafka_broker_zookeeper_properties_file: null
+
+# Just like the kafka environment file, but for zookeeper
+kafka_broker_zookeeper_environment_file: /etc/default/zookeeper
+
+# These values will be placed in the zookeper_environment_file
+kafka_broker_zookeeper_environment:
+  KAFKA_START_WAIT: 10
+  KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:{{ kafka_broker_prefix }}/config/log4j.properties"
+  KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
+
+# Kakfa broker pidfile location
+kafka_broker_zookeeper_pidfile: /var/run/zookeeper.pid
+
+# Name of the service to install for the Kakfa broker
+kafka_broker_service_name: kafka-broker
+
+# Location of our custom kafka-broker start script that plays nicely (or more
+# nicely than normal, anyway) with systemd
+kafka_broker_start_script_file: /usr/local/bin/kafka-broker
+
+# State for the kafka broker service
+kafka_broker_service_state: started
+
+# Set to true to enable the kafka broker service on boot
+kafka_broker_service_enabled: true
+
+kafka_broker_service_timeout_start_sec: 20
+
+# Name of the zookeeper service to install for the Kakfa broker
+kafka_broker_zookeeper_service_name: zookeeper
+
+# Location of our custom zookeeper start script that plays nicely (or more
+# nicely than normal, anyway) with systemd
+kafka_broker_zookeeper_start_script_file: /usr/local/bin/zookeeper
+
+# State for the zookeeper service
+kafka_broker_zookeeper_service_state: started
+
+# Set to true to enable the zookeeper service on boot
+kafka_broker_zookeeper_service_enabled: true
+
+# The service state to use when triggering a 'restart' handle
+kafka_broker_restarted_state: restarted
+
+# User and group for Kafka Broker
+kafka_broker_user: kafka
+kafka_broker_group: kafka
+
+# Kafka server.properties values
+kafka_broker_id: 0
+kafka_broker_listeners: BROKER0://localhost:9092
+kafka_broker_advertised_listeners: BROKER0://localhost:9092
+kafka_broker_inter_broker_listener_name: BROKER0
+kafka_broker_listener_security_protocol_map:
+  - BROKER0:SSL
+kafka_broker_num_network_threads: 3
+kafka_broker_num_io_threads: 8
+kafka_broker_socket_send_buffer_bytes: 102400
+kafka_broker_socket_receive_buffer_bytes: 102400
+kafka_broker_socket_request_max_bytes: 104857600
+kafka_broker_log_dirs:
+  - /tmp/kafka-logs
+kafka_broker_num_partitions: 1
+kafka_broker_num_recovery_threads_per_data_dir: 1
+kafka_broker_offsets_topic_replication_factor: 1
+kafka_broker_transaction_state_log_replication_factor: 1
+kafka_broker_transaction_state_log_min_isr: 1
+kafka_broker_log_flush_interval_messages: 10000
+kafka_broker_log_flush_interval_ms: 1000
+kafka_broker_log_retention_hours: 168
+kafka_broker_log_retention_bytes: 1073741824
+kafka_broker_log_segment_bytes: 1073741824
+kafka_broker_log_retention_check_interval_ms: 300000
+kafka_broker_zookeeper_connect:
+  - "localhost:2181"
+kafka_broker_zookeeper_connection_timeout_ms: 18000
+kafka_broker_group_initial_rebalance_delay_ms: 0
+kafka_broker_ssl_keystore_location: null
+kafka_broker_ssl_keystore_password: null
+kafka_broker_ssl_key_password: null
+kafka_broker_ssl_truststore_location: null
+kafka_broker_ssl_truststore_password: null
+
+# Config optoins that aren't covered above can be added here. Each line will
+# be added in order after the previous items have been deposited in the
+# server.properties file.
+kafka_broker_extra_server_properties: []
+
+# These values will be going away. They were originally meant to be used to
+# configure the bundled-with-Kafka zookeeper setups, but it's too much to do
+# for one role IMO.
+#
+# Kafka zookeeper.properties values
+kafka_broker_zookeeper_data_dir: /tmp/zookeeper
+# the port at which the clients will connect
+kafka_broker_zookeeper_client_port: 2181
+# disable the per-ip limit on the number of connections since this is a non-production config
+kafka_broker_zookeeper_max_client_cnxns: 0
+# Disable the adminserver by default to avoid port conflicts.
+# Set the port to something non-conflicting if choosing to enable this
+kafka_broker_zookeeper_admin_enable_server: false
+kafka_broker_zookeeper_admin_server_port: 8080

@@ -1,0 +1,67 @@
+---
+# Get:
+# kafka_broker_packages var, or if unset:
+# kafka_broker_<distro><distro_ver>, or if unset
+# kafka_broker_<distro> or null
+- name: Set the list of packages to install
+  set_fact:
+    _kafka_broker_packages: >-
+      {%- if kafka_broker_packages is not none -%}
+      {{ kafka_broker_packages }}
+      {%- elif (
+            lookup(
+              'vars',
+              (
+                '__kafka_broker_packages_' +
+                ansible_distribution|lower|string +
+                ansible_distribution_major_version|lower|string
+              ),
+              default=[]
+            ) | length
+          ) > 0 -%}
+      {{- lookup(
+            'vars',
+            (
+              '__kafka_broker_packages_' +
+              ansible_distribution|lower|string +
+              ansible_distribution_major_version|lower|string
+            ),
+            default=[]
+          ) -}}
+      {%- elif (
+            lookup(
+              'vars',
+              (
+                '__kafka_broker_packages_' +
+                ansible_distribution|lower|string
+              ),
+              default=[]
+            ) | length
+          ) > 0 -%}
+      {{- lookup(
+            'vars',
+            (
+              '__kafka_broker_packages_' +
+              ansible_distribution|lower|string
+            ),
+            default=[]
+          ) -}}
+      {%- endif -%}
+
+- name: Generate the server.properties file location, if needed
+  set_fact:
+    _kafka_broker_server_properties_file: >-
+      {%- if kafka_broker_server_properties_file is not none -%}
+      {{- kafka_broker_server_properties_file -}}
+      {%- else -%}
+      {{- kafka_broker_prefix }}/config/server.properties
+      {%- endif -%}
+
+- name: Generate the zookeeper.properties file location, if needed
+  set_fact:
+    _kafka_broker_zookeeper_properties_file: >-
+      {%- if kafka_broker_zookeeper_properties_file is not none -%}
+      {{- kafka_broker_zookeeper_properties_file -}}
+      {%- else -%}
+      {{- kafka_broker_prefix }}/config/zookeeper.properties
+      {%- endif -%}

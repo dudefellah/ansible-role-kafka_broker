@@ -1,0 +1,17 @@
+[Unit]
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
+
+[Service]
+Type=forking
+User={{ kafka_broker_user }}
+Environment=KAFKA_DIR={{ kafka_broker_prefix }}
+Environment=ZOOKEEPER_PROPERTES={{ _kafka_broker_zookeeper_properties_file }}
+EnvironmentFile=-{{ kafka_broker_zookeeper_environment_file }}
+ExecStart={{ kafka_broker_zookeeper_start_script_file }}
+PIDFile={{ kafka_broker_zookeeper_pidfile }}
+SuccessExitStatus=0
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target

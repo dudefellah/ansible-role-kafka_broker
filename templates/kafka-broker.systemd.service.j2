@@ -1,0 +1,18 @@
+[Unit]
+After=zookeeper.service
+
+[Service]
+Type=forking
+#User={{ kafka_broker_user }}
+Environment=KAFKA_DIR={{ kafka_broker_prefix }}
+EnvironmentFile=-{{ kafka_broker_environment_file }}
+ExecStartPre=/bin/chown -R {{ kafka_broker_user }}:{{ kafka_broker_group }} {{ kafka_broker_log_dirs | join(" ") }}
+ExecStart={{ kafka_broker_prefix }}/bin/kafka-server-start.sh {{ _kafka_broker_server_properties_file }}
+ExecStop={{ kafka_broker_prefix }}/bin/kafka-server-stop.sh
+TimeoutStartSec={{ kafka_broker_service_timeout_start_sec }}
+SuccessExitStatus=0
+PIDFile={{ kafka_broker_pidfile }}
+#Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target

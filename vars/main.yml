@@ -1,0 +1,25 @@
+---
+# vars file for ansible-role-kafka_broker
+__kafka_broker_packages_centos7:
+  - gzip
+  - rsync
+  - socat
+  - tar
+
+__kafka_broker_packages_centos8:
+  - gzip
+  - rsync
+  - socat
+  - tar
+
+__kafka_broker_packages_debian9:
+  - gzip
+  - rsync
+  - socat
+  - tar
+
+__kafka_broker_packages_debian10:
+  - gzip
+  - rsync
+  - socat
+  - tar

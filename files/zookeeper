@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# Helper script to make it easier for systemd to manage the Kafka Broker
+# process. There are other kafka scripts available, but it's not easy to
+# use them in a way that doesn't constantly report success no matter whether
+# or not the actual process failed. This script should help make it more
+# obvious as to whether or not the kafka broker succeeded.
+set -e
+
+KAFKA_DIR=${KAFKA_DIR-/opt/kafka}
+ZOOKEEPER_PROPERTIES=${ZOOKEEPER_PROPERTIES-"${KAFKA_DIR}/config/zookeeper.properties"}
+PIDFILE=${PIDFILE-/var/run/zookeeper.pid}
+
+usage() {
+        cat >&2 <<EOOPTS
+$(basename $0) [OPTIONS]
+
+OPTIONS:
+  -h:         Print this help message
+  -x:         Enable Debugging
+
+  -p <P>:     Use <P> as the properties/config file. Default: ${ZOOKEEPER_PROPERTIES}.
+
+  -k <K>:     Use <K> as the kafka root dir. Default: ${KAFKA_DIR}.
+EOOPTS
+}
+
+while getopts "hxp:k:" opt; do
+        case $opt in
+        h)
+                usage
+                exit 0
+                ;;
+        x)
+                set -x
+                DEBUG=1
+                ;;
+        k)
+                KAFKA_DIR=$OPTARG
+                ;;
+        p)
+                ZOOKEEPER_PROPERTIES=$OPTARG
+                ;;
+        *)
+                echo "Invalid option: -$OPTARG" >&2
+                exit 1
+                ;;
+        esac
+done
+
+shift "$((OPTIND - 1))"
+
+$KAFKA_DIR/bin/kafka-run-class.sh -name zookeeper -loggc $ZOOKEEPER_EXTRA_ARGS org.apache.zookeeper.server.quorum.QuorumPeerMain $ZOOKEEPER_PROPERTIES &
+PID=$!
+
+#PID=$(ps -ef|grep java | grep org.apache.zookeeper.server.quorum.QuorumPeerMain | awk '{print $2}');
+if [ ! -z "${PID}" ] && kill -0 $PID; then
+    echo $PID > $PIDFILE
+fi
