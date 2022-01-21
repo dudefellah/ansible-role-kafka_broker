@@ -1,17 +1,25 @@
 [Unit]
-After=zookeeper.service
+Description=Apache Kafka server (broker)
+Documentation=http://kafka.apache.org/documentation.html
+Requires={%- if kafka_broker_zookeeper_service_enabled %}zookeeper.service{%- endif %} network.target remote-fs.target
+After={%- if kafka_broker_zookeeper_service_enabled %}zookeeper.service{%- endif %} network.target remote-fs.target
 
 [Service]
 Type=forking
-#User={{ kafka_broker_user }}
+User=root
 Environment=KAFKA_DIR={{ kafka_broker_prefix }}
+Environment=KAFKA_PROPERTIES={{ _kafka_broker_server_properties_file }}
 EnvironmentFile=-{{ kafka_broker_environment_file }}
+ExecStartPre=/bin/mkdir -p /var/log/kafka
 ExecStartPre=/bin/chown -R {{ kafka_broker_user }}:{{ kafka_broker_group }} {{ kafka_broker_log_dirs | join(" ") }}
-ExecStart={{ kafka_broker_prefix }}/bin/kafka-server-start.sh {{ _kafka_broker_server_properties_file }}
+ExecStart={{ kafka_broker_start_script_file }}
+ExecStartPost=/bin/sh -c 'sleep 5; ps -ef | grep java | grep kafka.Kafka | grep -v grep | tr -s " "  | cut -d " " -f2 > {{ kafka_broker_pidfile }}'
 ExecStop={{ kafka_broker_prefix }}/bin/kafka-server-stop.sh
 TimeoutStartSec={{ kafka_broker_service_timeout_start_sec }}
 SuccessExitStatus=0
+GuessMainPID=no
 PIDFile={{ kafka_broker_pidfile }}
+SyslogIdentifier=kafka
 #Restart=on-abnormal
 
 [Install]

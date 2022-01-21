@@ -6,7 +6,7 @@
     - role_facts
 
 - name: Install dependency packages
-  package:
+  ansible.builtin.package:
     name: "{{ _kafka_broker_packages }}"
     update_cache: true
     state: present
@@ -14,14 +14,14 @@
     - packages
 
 - name: Stat the destination dir
-  stat:
+  ansible.builtin.stat:
     path: "{{ kafka_broker_prefix }}"
   register: _kafka_broker_st
   tags:
     - install
 
 - name: Load the checksum
-  slurp:
+  ansible.builtin.slurp:
     path: "{{ kafka_broker_prefix }}/.kafka_broker_ansible_checksum"
   failed_when: false
   register: _checksum
@@ -29,7 +29,7 @@
     - install
 
 - name: Create destination dir
-  file:
+  ansible.builtin.file:
     path: "{{ kafka_broker_prefix }}"
     state: directory
     owner: "{{ kafka_broker_user | default('root') }}"
@@ -43,28 +43,30 @@
 
 - block:
     - name: Create a tmpdir for the archive
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
       register: _archive_tmpdir
+      changed_when: false
 
     - name: Create a tmpdir for the extracted resources
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
       register: _resources_tmpdir
+      changed_when: false
 
     - name: Download archive
-      get_url:
+      ansible.builtin.get_url:
         url: "{{ kafka_broker_release_src }}"
         dest: "{{ _archive_tmpdir.path }}/{{ kafka_broker_release_src | basename }}"
         checksum: "{{ kafka_broker_release_checksum | default(omit) }}"
 
     - name: Get the archive checksum
-      stat:
+      ansible.builtin.stat:
         path: "{{ _archive_tmpdir.path }}/{{ kafka_broker_release_src | basename }}"
       register: _src_st
 
     - name: Extract the archive
-      unarchive:
+      ansible.builtin.unarchive:
         src: "{{ _archive_tmpdir.path }}/{{ kafka_broker_release_src | basename }}"
         dest: "{{ _resources_tmpdir.path }}"
         owner: "{{ kafka_broker_user }}"
@@ -73,14 +75,14 @@
       register: _extraction
 
     - name: Output the appropriate checksum
-      copy:
+      ansible.builtin.copy:
         content: "{{ _src_st.stat.checksum }}"
         dest: >-
           {{ _resources_tmpdir.path }}/{{ kafka_broker_release_src | basename |
           regex_replace('.tgz$', '') }}/.kafka_broker_ansible_checksum
 
     - name: Synchronize tmpdir over to the prefix dir
-      synchronize:
+      ansible.builtin.synchronize:
         src: >-
           {{ _resources_tmpdir.path }}/{{ kafka_broker_release_src | basename |
           regex_replace('.tgz$', '') }}/
@@ -93,11 +95,13 @@
       file:
         path: "{{ _archive_tmpdir.path }}"
         state: absent
+      changed_when: false
 
     - name: Cleanup tmpdir
       file:
         path: "{{ _resources_tmpdir.path }}"
         state: absent
+      changed_when: false
   when:
     - >-
       ('content' is not in _checksum) or
@@ -106,50 +110,24 @@
         ((_checksum.content | b64decode) != kafka_broker_release_checksum)
       )
 
+- name: Create log dirs
+  ansible.builtin.file:
+    path: "{{ __kb_logdir }}"
+    state: directory
+    owner: "{{ kafka_owner }}"
+    group: "{{ kafka_group }}"
+    mode: "0700"
+  loop: "{{ kafka_broker_log_dirs }}"
+  loop_control:
+    loop_var: "__kb_logdir"
+  when:
+    - "kafka_broker_create_log_dirs|bool"
+
 - block:
-    - name: Install kafka broker systemd service
-      template:
-        src: kafka-broker.systemd.service.j2
-        dest: "/etc/systemd/system/{{ kafka_broker_service_name }}.service"
-        owner: root
-        group: root
-        mode: "0644"
-      notify:
-        - systemctl daemon-reload
+    - name: Install zookeeper service config
+      include_tasks: install-zookeeper-service.yml
+      when:
+        - "kafka_broker_zookeeper_service_enabled|bool"
 
-    - name: Install a custom kafka start script
-      copy:
-        src: kafka-broker
-        dest: "{{ kafka_broker_start_script_file }}"
-        owner: root
-        group: root
-        mode: "0755"
-
-    - name: Install Kafka environment defaults
-      template:
-        src: environment-file.j2
-        dest: "{{ kafka_broker_environment_file }}"
-        owner: root
-        group: root
-        mode: "0644"
-      vars:
-        environment_vars: "{{ kafka_broker_environment }}"
-
-    - name: Flush handlers
-      meta: flush_handlers
-
-- name: Install the server.properties config file
-  template:
-    src: server.properties.j2
-    dest: "{{ _kafka_broker_server_properties_file }}"
-    owner: "{{ kafka_broker_user }}"
-    group: "{{ kafka_broker_group }}"
-    mode: "0644"
-  notify:
-    - restart kafka
-
-- name: Set kafka broker service state
-  service:
-    name: "{{ kafka_broker_service_name }}"
-    state: "{{ kafka_broker_service_state }}"
-    enabled: "{{ kafka_broker_service_enabled }}"
+    - name: Install kafka service config
+      include_tasks: install-kafka-service.yml

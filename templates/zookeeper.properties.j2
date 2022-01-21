@@ -20,8 +20,20 @@ dataDir={{ kafka_broker_zookeeper_data_dir }}
 clientPort={{ kafka_broker_zookeeper_client_port }}
 # disable the per-ip limit on the number of connections since this is a non-production config
 maxClientCnxns={{ kafka_broker_zookeeper_max_client_cnxns }}
+
+initLimit={{ kafka_broker_zookeeper_init_limit | default(5) }}
+syncLimit={{ kafka_broker_zookeeper_sync_limit | default(2) }}
+
 # Disable the adminserver by default to avoid port conflicts.
 # Set the port to something non-conflicting if choosing to enable this
 admin.enableServer={% if kafka_broker_zookeeper_admin_enable_server | bool %}true{% else %}false{% endif %}
 
 admin.serverPort={{ kafka_broker_zookeeper_admin_server_port }}
+
+{% for __kb_z_h in kafka_broker_zookeeper_servers %}
+server.{{ loop.index }}={{ __kb_z_h }}
+{% endfor %}
+
+{% for __kb_z_ep in kafka_broker_zookeeper_extra_properties %}
+{{ __kb_z_ep.name }}={{ __kb_z_ep.value }}
+{% endfor %}

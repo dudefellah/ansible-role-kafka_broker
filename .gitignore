@@ -1,3 +1,4 @@
 .cache/
 *.sw[po]
 tags
+molecule.log

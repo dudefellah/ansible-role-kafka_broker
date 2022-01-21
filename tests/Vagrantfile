@@ -1,0 +1,104 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = 4
+    libvirt.cputopology :sockets => '2', :cores => '2', :threads => '1'
+    libvirt.memory = 2048
+  end
+
+  N = 3
+  (1..N).each do |machine_id|
+    config.vm.define "kafka#{machine_id}" do |test|
+      test.vm.hostname = "kafka-#{machine_id}"
+      test.vm.box = "centos/8"
+      test.vm.network "private_network", ip: "192.168.77.#{20+machine_id}"
+
+      # Only execute once the Ansible provisioner,
+      # when all the machines are up and ready.
+      if machine_id == N
+        config.vm.provision "shell",
+          inline: "sudo yum -y install python3"
+
+        test.vm.provision :ansible do |ansible|
+          # Disable default limit to connect to all the machines
+          ansible.playbook = "test.yml"
+          ansible.limit = "all"
+          #ansible.vault_password_file = ".vault-password"
+          ansible.start_at_task = ENV['START_AT_TASK']
+          #ansible.verbose = "vvv"
+
+          ansible.groups = {
+            "kafka_test": ["kafka1", "kafka2", "kafka3"],
+          }
+
+          ansible.extra_vars = {
+            "kafka_owner": "kafka",
+            "kafka_group": "kafka",
+            "kafka_broker_zookeeper_start_script_file": "/opt/kafka/bin/zookeeper-server-start.sh -daemon $ZOOKEEPER_PROPERTES",
+            "kafka_broker_listeners": {
+              "kafka1": [
+                "BROKER0://kafka-1:9092",
+              ],
+              "kafka2": [
+                "BROKER1://kafka-2:9092",
+              ],
+              "kafka3": [
+                "BROKER2://kafka-3:9092",
+              ]
+            },
+            "kafka_broker_advertised_listeners": {
+              "kafka1": [
+                "BROKER0://kafka-1:9092",
+              ],
+              "kafka2": [
+                "BROKER1://kafka-2:9092",
+              ],
+              "kafka3": [
+                "BROKER2://kafka-3:9092",
+              ]
+            },
+            "kafka_broker_inter_broker_listener_names": {
+              "kafka1": ['BROKER0'],
+              "kafka2": ['BROKER1'],
+              "kafka3": ['BROKER2'],
+            },
+            "kafka_broker_zookeeper_servers": [
+              "kafka-1:2888:3888",
+              "kafka-2:2888:3888",
+              "kafka-3:2888:3888",
+            ],
+            "kafka_broker_zookeeper_connect": [
+              "kafka-1:2888",
+              "kafka-2:2888",
+              "kafka-3:2888",
+            ],
+            "kafka_broker_listener_security_protocol_maps": {
+              "kafka1": ["BROKER0:PLAINTEXT"],
+              "kafka2": ["BROKER1:PLAINTEXT"],
+              "kafka3": ["BROKER2:PLAINTEXT"],
+            },
+            "kafka_broker_extra_server_properties": [
+              {"name": "controlled.shutdown.enable", "value": true},
+            ],
+            'kafka_broker_zookeeper_environment': {
+              'KAFKA_START_WAIT': 10,
+              'KAFKA_LOG4J_OPTS': '-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties',
+              'KAFKA_HEAP_OPTS': '-Xmx512M -Xms512M',
+              'JAVA_HOME': '/usr/lib/jvm/java-11-openjdk-11.0.13.0.8-4.el8_5.x86_64',
+            },
+          }
+        end
+      end
+    end
+  end
+end

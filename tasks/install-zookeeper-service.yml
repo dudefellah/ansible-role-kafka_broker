@@ -1,0 +1,62 @@
+---
+- name: Install the zookeeper properties file
+  ansible.builtin.template:
+    src: zookeeper.properties.j2
+    dest: "{{ _kafka_broker_zookeeper_properties_file }}"
+    owner: "{{ kafka_broker_user }}"
+    group: "{{ kafka_broker_group }}"
+    mode: "0644"
+  vars:
+    kafka_broker_zookeeper_client_port: >-
+      {{ _kafka_broker_zookeeper_client_port }}
+
+- name: Install the zookeeper environment file
+  ansible.builtin.template:
+    src: environment-file.j2
+    dest: "{{ kafka_broker_zookeeper_environment_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    __kb_environment: "{{ kafka_broker_zookeeper_environment }}"
+
+- name: Install the Zookeeper systemd service
+  ansible.builtin.template:
+    src: zookeeper.systemd.service.j2
+    dest: >-
+      /etc/systemd/system/{{ kafka_broker_zookeeper_service_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    kafka_broker_zookeeper_start_script_file: >-
+      {{ _kafka_broker_zookeeper_start_script_file }}
+  register: __kb_zookeeper_service
+
+- name: Create the zookeeper data dir
+  ansible.builtin.file:
+    state: directory
+    path: "{{ kafka_broker_zookeeper_data_dir }}"
+    owner: "{{ kafka_broker_user }}"
+    group: "{{ kafka_broker_group }}"
+    mode: "0750"
+
+- name: Install the zookeeper myid file
+  ansible.builtin.copy:
+    content: "{{ _kafka_broker_zookeeper_myid }}"
+    dest: "{{ kafka_broker_zookeeper_data_dir }}/myid"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Do a systemctl daemon-reload  # noqa 503
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - "__kb_zookeeper_service.changed"
+
+- name: Set the builtin zookeeper service state
+  ansible.builtin.service:
+    name: "{{ kafka_broker_zookeeper_service_name }}"
+    state: "{{ kafka_broker_zookeeper_service_state }}"
+    enabled: "{{ kafka_broker_zookeeper_service_enabled }}"

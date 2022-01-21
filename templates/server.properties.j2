@@ -35,10 +35,10 @@ listeners={{ kafka_broker_listeners | join(',') }}
 # Hostname and port the broker will advertise to producers and consumers. If not set,
 # it uses the value for "listeners" if configured.  Otherwise, it will use the value
 # returned from java.net.InetAddress.getCanonicalHostName().
-advertised.listeners={{ kafka_broker_advertised_listeners | join(',') }}
+advertised.listeners={{ kafka_broker_advertised_listeners | default(kafka_broker_listeners) | join(',') }}
 
 # The listener used to communicate between Kafka brokers
-inter.broker.listener.name={{ kafka_broker_inter_broker_listener_name | join(',') }}
+inter.broker.listener.name={{ kafka_broker_inter_broker_listener_names | default(kafka_broker_listeners) | join(',') }}
 
 # Maps listener names to security protocols, the default is for them to be the same. See the config documentation for more details
 listener.security.protocol.map={{ kafka_broker_listener_security_protocol_map | join(',') }}
@@ -124,11 +124,10 @@ log.retention.check.interval.ms={{ kafka_broker_log_retention_check_interval_ms 
 # server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002".
 # You can also append an optional chroot string to the urls to specify the
 # root directory for all kafka znodes.
-zookeeper.connect={{ kafka_broker_zookeeper_connect | join(',') }}
+zookeeper.connect={{ kafka_broker_zookeeper_connect | default(kafka_broker_zookeeper_servers) | join(',') }}
 
 # Timeout in ms for connecting to zookeeper
 zookeeper.connection.timeout.ms={{ kafka_broker_zookeeper_connection_timeout_ms }}
-
 
 ############################# Group Coordinator Settings #############################
 
@@ -155,6 +154,14 @@ ssl.truststore.location={{ kafka_broker_ssl_truststore_location }}
 {% if kafka_broker_ssl_truststore_password is not none %}
 ssl.truststore.password={{ kafka_broker_ssl_truststore_password }}
 {% endif %}
+
+{% if kafka_broker_ssl_client_auth is not none %}
+ssl.client.auth={{ kafka_broker_ssl_client_auth }}
+{% endif %}
+{% if kafka_broker_ssl_enabled_protocols is not none %}
+ssl.enabled.protocols={{ kafka_broker_ssl_enabled_protocols | join(',') }}
+{% endif %}
+
 
 ############################# Extra values passed with Ansible #############################
 {% for extra_prop in kafka_broker_extra_server_properties %}

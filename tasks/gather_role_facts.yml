@@ -1,8 +1,17 @@
 ---
-# Get:
-# kafka_broker_packages var, or if unset:
-# kafka_broker_<distro><distro_ver>, or if unset
-# kafka_broker_<distro> or null
+- name: Set the inventory group name to use for autogeneration
+  set_fact:
+    _kafka_broker_inventory_group_name: >-
+      {%- if kafka_broker_inventory_group is not none -%}
+      {{ kafka_broker_inventory_group }}
+      {%- else -%}
+      {{ group_names[0] }}
+      {%- endif -%}
+
+- name: Set the list of inventory hosts
+  set_fact:
+    _kafka_broker_inventory: "{{ groups[_kafka_broker_inventory_group_name] | list }}"
+
 - name: Set the list of packages to install
   set_fact:
     _kafka_broker_packages: >-
@@ -48,6 +57,11 @@
           ) -}}
       {%- endif -%}
 
+- name: Set the default zookeeper client port
+  set_fact:
+    _kafka_broker_zookeeper_client_port: >-
+      {{ kafka_broker_zookeeper_client_ports[ansible_hostname] | default(2181) }}
+
 - name: Generate the server.properties file location, if needed
   set_fact:
     _kafka_broker_server_properties_file: >-
@@ -64,4 +78,49 @@
       {{- kafka_broker_zookeeper_properties_file -}}
       {%- else -%}
       {{- kafka_broker_prefix }}/config/zookeeper.properties
+      {%- endif -%}
+
+- name: Set the kafka start script location
+  set_fact:
+    _kafka_broker_start_script_file: >-
+      {%- if kafka_broker_start_script_file.startswith('/') -%}
+      {{ kafka_broker_start_script_file }}
+      {%- else -%}
+      {{ kafka_broker_prefix }}/{{ kafka_broker_start_script_file }}
+      {%- endif -%}
+
+- name: Set the zookeeper start script location
+  set_fact:
+    _kafka_broker_zookeeper_start_script_file: >-
+      {%- if kafka_broker_zookeeper_start_script_file.startswith('/') -%}
+      {{ kafka_broker_zookeeper_start_script_file }}
+      {%- else -%}
+      {{ kafka_broker_prefix }}/{{ kafka_broker_zookeeper_start_script_file }}
+      {%- endif -%}
+
+- name: Generate the zookeeper service type
+  set_fact:
+    _kafka_broker_zookeeper_service_type: >-
+      {%- if kafka_broker_zookeeper_service_type is not none -%}
+      {{ kafka_broker_zookeeper_service_type }}
+      {%- elif '-daemon' in kafka_broker_zookeeper_start_script_file -%}
+      forking
+      {%- else -%}
+      simple
+      {%- endif -%}
+
+- name: Set zookeeper ports
+  set_fact:
+    _kafka_broker_zookeeper_peer_port: >-
+      {{ kafka_broker_zookeeper_peer_port | default(2888) }}
+    _kafka_broker_zookeeper_leader_election_port: >-
+      {{ kafka_broker_zookeeper_leader_election_port | default(3888) }}
+
+- name: Set the zookeeper myid value
+  set_fact:
+    _kafka_broker_zookeeper_myid: >-
+      {%- if kafka_broker_zookeeper_myid is not none -%}
+      {{ kafka_broker_zookeeper_myid }}
+      {%- else -%}
+      {{ _kafka_broker_inventory.index(inventory_hostname) + 1 }}
       {%- endif -%}

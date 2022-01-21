@@ -5,6 +5,3 @@
     - name: "Include ansible-role-kafka"
       include_role:
         name: "ansible-role-kafka_broker"
-      vars:
-        kafka_broker_user: root
-        kafka_broker_group: root

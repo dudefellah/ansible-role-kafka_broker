@@ -3,13 +3,17 @@ Requires=network.target remote-fs.target
 After=network.target remote-fs.target
 
 [Service]
-Type=forking
-User={{ kafka_broker_user }}
+Type={{ _kafka_broker_zookeeper_service_type }}
+User=root
+WorkingDirectory={{ kafka_broker_prefix }}
 Environment=KAFKA_DIR={{ kafka_broker_prefix }}
 Environment=ZOOKEEPER_PROPERTES={{ _kafka_broker_zookeeper_properties_file }}
 EnvironmentFile=-{{ kafka_broker_zookeeper_environment_file }}
 ExecStart={{ kafka_broker_zookeeper_start_script_file }}
+ExecStartPost=/bin/sh -c 'sleep 2; ps -ef | grep java | grep org.apache.zookeeper.server.quorum.QuorumPeerMain | grep -v grep | tr -s " "  | cut -d " " -f2 > {{ kafka_broker_zookeeper_pidfile }}'
+{% if kafka_broker_zookeeper_pidfile is not none %}
 PIDFile={{ kafka_broker_zookeeper_pidfile }}
+{% endif %}
 SuccessExitStatus=0
 Restart=on-abnormal
 

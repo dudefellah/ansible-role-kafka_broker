@@ -1,0 +1,62 @@
+---
+- name: Install kafka broker systemd service
+  ansible.builtin.template:
+    src: kafka-broker.systemd.service.j2
+    dest: "/etc/systemd/system/{{ kafka_broker_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: __kb_kafka_service
+  vars:
+    kafka_broker_start_script_file: "{{ _kafka_broker_start_script_file }}"
+
+- name: Do a systemctl daemon-reload  # noqa 503
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - "__kb_kafka_service.changed"
+
+- name: Install Kafka environment defaults
+  ansible.builtin.template:
+    src: environment-file.j2
+    dest: "{{ kafka_broker_environment_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    __kb_environment: "{{ kafka_broker_environment }}"
+
+- name: Install the server.properties config file
+  ansible.builtin.template:
+    src: server.properties.j2
+    dest: "{{ _kafka_broker_server_properties_file }}"
+    owner: "{{ kafka_broker_user }}"
+    group: "{{ kafka_broker_group }}"
+    mode: "0644"
+  notify:
+    - restart kafka
+
+- debug:
+    msg: "kaas: {{ kafka_broker_jaas }}"
+
+- debug:
+    msg: "jaas bool: {{ kafka_broker_jaas|bool }}"
+
+- name: Install the jaas config
+  ansible.builtin.template:
+    src: jaas.conf.j2
+    dest: "{{ kafka_broker_jaas_file }}"
+    owner: "{{ kafka_broker_user }}"
+    group: "{{ kafka_broker_group }}"
+    mode: "0640"
+  notify:
+    - restart kafka
+  when:
+    - "kafka_broker_jaas|length > 0"
+    - "kafka_broker_jaas_file is not none"
+
+- name: Set kafka broker service state
+  ansible.builtin.service:
+    name: "{{ kafka_broker_service_name }}"
+    state: "{{ kafka_broker_service_state }}"
+    enabled: "{{ kafka_broker_service_enabled }}"

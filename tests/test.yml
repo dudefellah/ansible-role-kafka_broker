@@ -1,0 +1,34 @@
+---
+- hosts: all
+  remote_user: vagrant
+  gather_facts: true
+  tasks:
+    - name: Create kafka group
+      ansible.builtin.group:
+        name: "{{ kafka_group }}"
+        system: true
+      become: true
+
+    - name: Create kafka user
+      ansible.builtin.user:
+        name: "{{ kafka_owner }}"
+        system: true
+      become: true
+
+    - name: Install OpenJDK
+      ansible.builtin.package:
+        name: java-11-openjdk
+        state: present
+      become: true
+
+    - name: Replace hosts entry for host with the public IP
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "^127.0.*{{ ansible_hostname }}"
+        line: "{{ ansible_default_ipv4.address }} {{ ansible_hostname }}"
+      become: true
+
+    - block:
+        - include_role:
+            name: dudefellah.kafka_broker
+      become: true

@@ -8,12 +8,12 @@ lint: |
   yamllint .
   ansible-lint .
 platforms:
-  - name: kafka_broker-centos7
-    image: "geerlingguy/docker-centos7-ansible:latest"
-    command: ${MOLECULE_DOCKER_COMMAND:-""}
-    volumes:
-     - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
+#  - name: kafka_broker-centos7
+#    image: "geerlingguy/docker-centos7-ansible:latest"
+#    command: ${MOLECULE_DOCKER_COMMAND:-""}
+#    volumes:
+#     - /sys/fs/cgroup:/sys/fs/cgroup:ro
+#    privileged: true
   - name: kafka_broker-centos8
     image: "geerlingguy/docker-centos8-ansible:latest"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -34,6 +34,9 @@ platforms:
     privileged: true
 provisioner:
   name: ansible
+  group_vars:
+    all:
+      kafka_broker_create_log_dirs: true
   playbooks:
     prepare: ../resources/playbooks/prepare.yml
 verifier:

@@ -26,3 +26,14 @@
           - java-11-openjdk
       when:
         - "ansible_distribution|lower == 'centos'"
+
+    - name: Create a kafka group
+      group:
+        name: kafka
+        system: true
+
+    - name: Create a kafka user
+      user:
+        name: kafka
+        group: kafka
+        system: true

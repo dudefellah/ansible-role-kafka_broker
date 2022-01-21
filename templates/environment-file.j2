@@ -1,5 +1,4 @@
 # {{ ansible_managed }}
-LOG_DIR="{{ kafka_broker_log_dirs[0] }}"
-{% for env_key, env_val in kafka_broker_environment.items() %}
+{% for env_key, env_val in __kb_environment.items() %}
 {{ env_key }}="{{ env_val }}"
 {% endfor %}
